@@ -17,6 +17,7 @@ export function getProviderName(apiUrl: string) {
 	if (apiUrl.includes(":11434") || apiUrl.includes("ollama")) return "ollama";
 	if (apiUrl.includes("api.deepinfra.com")) return "deepinfra";
 	if (apiUrl.includes("generativelanguage.googleapis.com")) return "gemini";
+	if (apiUrl.includes("api.githubcopilot.com")) return "copilot";
 	return "custom";
 }
 
@@ -74,6 +75,17 @@ export function selectAIProvider(config: { apiUrl: string; apiKey: string }) {
 				queryParams: { key: config.apiKey },
 				headers: {},
 			});
+		case "copilot":
+			return createOpenAICompatible({
+				name: "copilot",
+				baseURL: config.apiUrl,
+				headers: {
+					Authorization: `Bearer ${config.apiKey}`,
+					"Editor-Version": "vscode/1.90.0",
+					"Editor-Plugin-Version": "copilot-chat/0.17.0",
+					"Copilot-Integration-Id": "vscode-chat",
+				},
+			});
 		case "custom":
 			return createOpenAICompatible({
 				name: "custom",
@@ -103,6 +115,16 @@ export const getProviderHeaders = (
 	if (apiUrl.includes("mistral")) {
 		return {
 			Authorization: apiKey,
+		};
+	}
+
+	// GitHub Copilot
+	if (apiUrl.includes("githubcopilot.com")) {
+		return {
+			Authorization: `Bearer ${apiKey}`,
+			"Editor-Version": "vscode/1.90.0",
+			"Editor-Plugin-Version": "copilot-chat/0.17.0",
+			"Copilot-Integration-Id": "vscode-chat",
 		};
 	}
 

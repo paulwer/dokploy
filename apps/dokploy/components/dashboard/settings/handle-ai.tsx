@@ -102,6 +102,22 @@ export const HandleAi = ({ aiId }: Props) => {
 	const apiKey = form.watch("apiKey");
 
 	const isOllama = apiUrl.includes(":11434") || apiUrl.includes("ollama");
+	const isCopilot = apiUrl.includes("githubcopilot.com");
+
+	const providerPresets = [
+		{ label: "OpenAI", url: "https://api.openai.com/v1" },
+		{ label: "Anthropic", url: "https://api.anthropic.com/v1" },
+		{ label: "GitHub Copilot", url: "https://api.githubcopilot.com" },
+		{ label: "Mistral", url: "https://api.mistral.ai/v1" },
+		{ label: "Cohere", url: "https://api.cohere.ai/v2" },
+		{
+			label: "Gemini",
+			url: "https://generativelanguage.googleapis.com/v1beta/openai",
+		},
+		{ label: "Perplexity", url: "https://api.perplexity.ai" },
+		{ label: "DeepInfra", url: "https://api.deepinfra.com/v1/openai" },
+		{ label: "Ollama", url: "http://localhost:11434" },
+	];
 	const { data: models, isLoading: isLoadingServerModels } =
 		api.ai.getModels.useQuery(
 			{
@@ -194,6 +210,27 @@ export const HandleAi = ({ aiId }: Props) => {
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>API URL</FormLabel>
+									<div className="flex flex-wrap gap-1 pb-1">
+										{providerPresets.map((preset) => (
+											<Button
+												key={preset.label}
+												type="button"
+												variant={
+													field.value === preset.url ? "default" : "outline"
+												}
+												size="sm"
+												className="h-6 px-2 text-xs"
+												onClick={() => {
+													field.onChange(preset.url);
+													if (form.getValues("model")) {
+														form.setValue("model", "");
+													}
+												}}
+											>
+												{preset.label}
+											</Button>
+										))}
+									</div>
 									<FormControl>
 										<Input
 											placeholder="https://api.openai.com/v1"
@@ -225,7 +262,11 @@ export const HandleAi = ({ aiId }: Props) => {
 										<FormControl>
 											<Input
 												type="password"
-												placeholder="sk-..."
+												placeholder={
+													isCopilot
+														? "ghp_... (GitHub Personal Access Token)"
+														: "sk-..."
+												}
 												autoComplete="one-time-code"
 												{...field}
 												onChange={(e) => {
@@ -238,7 +279,9 @@ export const HandleAi = ({ aiId }: Props) => {
 											/>
 										</FormControl>
 										<FormDescription>
-											Your API key for authentication
+											{isCopilot
+												? "GitHub Personal Access Token (PAT) with Copilot access"
+												: "Your API key for authentication"}
 										</FormDescription>
 										<FormMessage />
 									</FormItem>
