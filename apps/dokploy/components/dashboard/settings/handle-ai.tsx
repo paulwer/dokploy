@@ -102,7 +102,13 @@ export const HandleAi = ({ aiId }: Props) => {
 	const apiKey = form.watch("apiKey");
 
 	const isOllama = apiUrl.includes(":11434") || apiUrl.includes("ollama");
-	const isCopilot = apiUrl.includes("githubcopilot.com");
+	const isCopilot = (() => {
+		try {
+			return new URL(apiUrl).hostname === "api.githubcopilot.com";
+		} catch {
+			return false;
+		}
+	})();
 
 	const providerPresets = [
 		{ label: "OpenAI", url: "https://api.openai.com/v1" },

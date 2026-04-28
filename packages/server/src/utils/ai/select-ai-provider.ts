@@ -7,6 +7,18 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOllama } from "ai-sdk-ollama";
 
+const COPILOT_EDITOR_VERSION = "vscode/1.90.0";
+const COPILOT_PLUGIN_VERSION = "copilot-chat/0.17.0";
+const COPILOT_INTEGRATION_ID = "vscode-chat";
+
+function getHostname(apiUrl: string): string {
+	try {
+		return new URL(apiUrl).hostname;
+	} catch {
+		return "";
+	}
+}
+
 export function getProviderName(apiUrl: string) {
 	if (apiUrl.includes("api.openai.com")) return "openai";
 	if (apiUrl.includes("azure.com")) return "azure";
@@ -17,7 +29,7 @@ export function getProviderName(apiUrl: string) {
 	if (apiUrl.includes(":11434") || apiUrl.includes("ollama")) return "ollama";
 	if (apiUrl.includes("api.deepinfra.com")) return "deepinfra";
 	if (apiUrl.includes("generativelanguage.googleapis.com")) return "gemini";
-	if (apiUrl.includes("api.githubcopilot.com")) return "copilot";
+	if (getHostname(apiUrl) === "api.githubcopilot.com") return "copilot";
 	return "custom";
 }
 
@@ -81,9 +93,9 @@ export function selectAIProvider(config: { apiUrl: string; apiKey: string }) {
 				baseURL: config.apiUrl,
 				headers: {
 					Authorization: `Bearer ${config.apiKey}`,
-					"Editor-Version": "vscode/1.90.0",
-					"Editor-Plugin-Version": "copilot-chat/0.17.0",
-					"Copilot-Integration-Id": "vscode-chat",
+					"Editor-Version": COPILOT_EDITOR_VERSION,
+					"Editor-Plugin-Version": COPILOT_PLUGIN_VERSION,
+					"Copilot-Integration-Id": COPILOT_INTEGRATION_ID,
 				},
 			});
 		case "custom":
@@ -119,12 +131,12 @@ export const getProviderHeaders = (
 	}
 
 	// GitHub Copilot
-	if (apiUrl.includes("githubcopilot.com")) {
+	if (getHostname(apiUrl) === "api.githubcopilot.com") {
 		return {
 			Authorization: `Bearer ${apiKey}`,
-			"Editor-Version": "vscode/1.90.0",
-			"Editor-Plugin-Version": "copilot-chat/0.17.0",
-			"Copilot-Integration-Id": "vscode-chat",
+			"Editor-Version": COPILOT_EDITOR_VERSION,
+			"Editor-Plugin-Version": COPILOT_PLUGIN_VERSION,
+			"Copilot-Integration-Id": COPILOT_INTEGRATION_ID,
 		};
 	}
 
