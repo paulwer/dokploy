@@ -11,14 +11,6 @@ const COPILOT_EDITOR_VERSION = "vscode/1.90.0";
 const COPILOT_PLUGIN_VERSION = "copilot-chat/0.17.0";
 const COPILOT_INTEGRATION_ID = "vscode-chat";
 
-function getHostname(apiUrl: string): string {
-	try {
-		return new URL(apiUrl).hostname;
-	} catch {
-		return "";
-	}
-}
-
 export function getProviderName(apiUrl: string) {
 	if (apiUrl.includes("api.openai.com")) return "openai";
 	if (apiUrl.includes("azure.com")) return "azure";
