@@ -163,7 +163,7 @@ export const getProviderHeaders = (
 	}
 
 	// GitHub Copilot
-	if (getHostname(apiUrl) === "api.githubcopilot.com") {
+	if (apiUrl.includes("api.githubcopilot.com")) {
 		return {
 			Authorization: `Bearer ${apiKey}`,
 			"Editor-Version": COPILOT_EDITOR_VERSION,
