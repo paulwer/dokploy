@@ -29,7 +29,10 @@ export function getProviderName(apiUrl: string) {
 	if (apiUrl.includes(":11434") || apiUrl.includes("ollama")) return "ollama";
 	if (apiUrl.includes("api.deepinfra.com")) return "deepinfra";
 	if (apiUrl.includes("generativelanguage.googleapis.com")) return "gemini";
-	if (getHostname(apiUrl) === "api.githubcopilot.com") return "copilot";
+	if (apiUrl.includes("api.githubcopilot.com")) return "copilot";
+	if (apiUrl.includes("openrouter.ai")) return "openrouter";
+	if (apiUrl.includes("api.z.ai")) return "zai";
+	if (apiUrl.includes("api.minimax.io")) return "minimax";
 	return "custom";
 }
 
@@ -43,6 +46,18 @@ export function selectAIProvider(config: { apiUrl: string; apiKey: string }) {
 				baseURL: config.apiUrl,
 			});
 		case "azure":
+			// Azure OpenAI-compatible endpoints already include /v1 in the path.
+			// Using createAzure with such URLs causes a doubled /v1//v1/ suffix.
+			if (config.apiUrl.includes("/v1")) {
+				return createOpenAICompatible({
+					name: "azure",
+					baseURL: config.apiUrl,
+					headers: {
+						"api-key": config.apiKey,
+						Authorization: `Bearer ${config.apiKey}`,
+					},
+				});
+			}
 			return createAzure({
 				apiKey: config.apiKey,
 				baseURL: config.apiUrl,
@@ -84,8 +99,33 @@ export function selectAIProvider(config: { apiUrl: string; apiKey: string }) {
 			return createOpenAICompatible({
 				name: "gemini",
 				baseURL: config.apiUrl,
-				queryParams: { key: config.apiKey },
-				headers: {},
+				headers: {
+					Authorization: `Bearer ${config.apiKey}`,
+				},
+			});
+		case "openrouter":
+			return createOpenAICompatible({
+				name: "openrouter",
+				baseURL: config.apiUrl,
+				headers: {
+					Authorization: `Bearer ${config.apiKey}`,
+				},
+			});
+		case "zai":
+			return createOpenAICompatible({
+				name: "zai",
+				baseURL: config.apiUrl,
+				headers: {
+					Authorization: `Bearer ${config.apiKey}`,
+				},
+			});
+		case "minimax":
+			return createOpenAICompatible({
+				name: "minimax",
+				baseURL: config.apiUrl,
+				headers: {
+					Authorization: `Bearer ${config.apiKey}`,
+				},
 			});
 		case "copilot":
 			return createOpenAICompatible({
@@ -126,7 +166,7 @@ export const getProviderHeaders = (
 	// Mistral
 	if (apiUrl.includes("mistral")) {
 		return {
-			Authorization: apiKey,
+			Authorization: `Bearer ${apiKey}`,
 		};
 	}
 

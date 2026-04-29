@@ -9,21 +9,30 @@ import {
 	removePreviewDeployment,
 	shouldDeploy,
 } from "@dokploy/server";
+import { db } from "@dokploy/server/db";
 import { Webhooks } from "@octokit/webhooks";
 import { and, eq } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { db } from "@/server/db";
 import { applications, compose, github } from "@/server/db/schema";
 import type { DeploymentJob } from "@/server/queues/queue-types";
 import { myQueue } from "@/server/queues/queueSetup";
 import { deploy } from "@/server/utils/deploy";
-import { extractCommitMessage, extractHash } from "./[refreshToken]";
+import {
+	extractCommitMessage,
+	extractHash,
+	logWebhookError,
+} from "./[refreshToken]";
 
 export default async function handler(
 	req: NextApiRequest,
 	res: NextApiResponse,
 ) {
 	const signature = req.headers["x-hub-signature-256"];
+	if (!signature) {
+		res.status(401).json({ message: "Missing signature header" });
+		return;
+	}
+
 	const githubBody = req.body;
 
 	if (!githubBody?.installation?.id) {
@@ -197,10 +206,8 @@ export default async function handler(
 			});
 			return;
 		} catch (error) {
-			console.error("Error deploying applications on tag:", error);
-			res
-				.status(400)
-				.json({ message: "Error deploying applications on tag", error });
+			logWebhookError("Error deploying applications on tag:", error);
+			res.status(400).json({ message: "Error deploying applications on tag" });
 			return;
 		}
 	}
@@ -322,7 +329,8 @@ export default async function handler(
 			}
 			res.status(200).json({ message: `Deployed ${totalApps} apps` });
 		} catch (error) {
-			res.status(400).json({ message: "Error deploying Application", error });
+			logWebhookError("Error deploying Application:", error);
+			res.status(400).json({ message: "Error deploying Application" });
 		}
 	} else if (req.headers["x-github-event"] === "pull_request") {
 		const prId = githubBody?.pull_request?.id;
@@ -355,6 +363,12 @@ export default async function handler(
 			action === "labeled" ||
 			action === "unlabeled"
 		) {
+			const shouldCreateDeployment =
+				action === "opened" ||
+				action === "synchronize" ||
+				action === "reopened" ||
+				action === "labeled";
+
 			const repository = githubBody?.repository?.name;
 			const deploymentHash = githubBody?.pull_request?.head?.sha;
 			const branch = githubBody?.pull_request?.base?.ref;
@@ -475,7 +489,7 @@ export default async function handler(
 				let previewDeploymentId =
 					previewDeploymentResult?.previewDeploymentId || "";
 
-				if (!previewDeploymentResult) {
+				if (!previewDeploymentResult && shouldCreateDeployment) {
 					const previewDeployment = await createPreviewDeployment({
 						applicationId: app.applicationId as string,
 						branch: prBranch,
@@ -497,21 +511,23 @@ export default async function handler(
 					previewDeploymentId,
 				};
 
-				if (IS_CLOUD && app.serverId) {
-					jobData.serverId = app.serverId;
-					deploy(jobData).catch((error) => {
-						console.error("Background deployment failed:", error);
-					});
-					continue;
+				if (previewDeploymentId) {
+					if (IS_CLOUD && app.serverId) {
+						jobData.serverId = app.serverId;
+						deploy(jobData).catch((error) => {
+							console.error("Background deployment failed:", error);
+						});
+						continue;
+					}
+					await myQueue.add(
+						"deployments",
+						{ ...jobData },
+						{
+							removeOnComplete: true,
+							removeOnFail: true,
+						},
+					);
 				}
-				await myQueue.add(
-					"deployments",
-					{ ...jobData },
-					{
-						removeOnComplete: true,
-						removeOnFail: true,
-					},
-				);
 			}
 			return res.status(200).json({ message: "Apps Deployed" });
 		}

@@ -7,6 +7,7 @@ import {
 } from "@dokploy/server/db/schema";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
+import type { z } from "zod";
 import { generatePassword } from "../templates";
 import { removeService } from "../utils/docker/utils";
 import { removeDirectoryCode } from "../utils/filesystem/directory";
@@ -29,13 +30,9 @@ export const findPreviewDeploymentById = async (
 		with: {
 			domain: true,
 			application: {
-				with: {
-					server: true,
-					environment: {
-						with: {
-							project: true,
-						},
-					},
+				columns: {
+					applicationId: true,
+					serverId: true,
 				},
 			},
 		},
@@ -130,7 +127,7 @@ export const findPreviewDeploymentsByApplicationId = async (
 };
 
 export const createPreviewDeployment = async (
-	schema: typeof apiCreatePreviewDeployment._type,
+	schema: z.infer<typeof apiCreatePreviewDeployment>,
 ) => {
 	const application = await findApplicationById(schema.applicationId);
 	const appName = `preview-${application.appName}-${generatePassword(6)}`;
@@ -235,7 +232,7 @@ const generateWildcardDomain = async (
 	baseDomain: string,
 	appName: string,
 	serverIp: string,
-	userId: string,
+	_userId: string,
 ): Promise<string> => {
 	if (!baseDomain.startsWith("*.")) {
 		throw new Error('The base domain must start with "*."');

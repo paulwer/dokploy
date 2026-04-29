@@ -1,17 +1,18 @@
 import { IS_CLOUD, shouldDeploy } from "@dokploy/server";
+import { db } from "@dokploy/server/db";
 import { eq } from "drizzle-orm";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { db } from "@/server/db";
 import { compose } from "@/server/db/schema";
 import type { DeploymentJob } from "@/server/queues/queue-types";
 import { myQueue } from "@/server/queues/queueSetup";
 import { deploy } from "@/server/utils/deploy";
 import {
 	extractBranchName,
-	extractCommitedPaths,
 	extractCommitMessage,
+	extractCommittedPaths,
 	extractHash,
 	getProviderByHeader,
+	logWebhookError,
 } from "../[refreshToken]";
 
 export default async function handler(
@@ -97,15 +98,17 @@ export default async function handler(
 				return;
 			}
 
-			const commitedPaths = await extractCommitedPaths(
+			const committedPaths = await extractCommittedPaths(
 				req.body,
 				composeResult.bitbucket,
-				composeResult.bitbucketRepository || "",
+				composeResult.bitbucketRepositorySlug ||
+					composeResult.bitbucketRepository ||
+					"",
 			);
 
 			const shouldDeployPaths = shouldDeploy(
 				composeResult.watchPaths,
-				commitedPaths,
+				committedPaths,
 			);
 
 			if (!shouldDeployPaths) {
@@ -193,13 +196,14 @@ export default async function handler(
 				);
 			}
 		} catch (error) {
-			res.status(400).json({ message: "Error deploying Compose", error });
+			logWebhookError("Error deploying Compose:", error);
+			res.status(400).json({ message: "Error deploying Compose" });
 			return;
 		}
 
 		res.status(200).json({ message: "Compose deployed successfully" });
 	} catch (error) {
-		console.log(error);
-		res.status(400).json({ message: "Error deploying Compose", error });
+		logWebhookError("Error deploying Compose:", error);
+		res.status(400).json({ message: "Error deploying Compose" });
 	}
 }

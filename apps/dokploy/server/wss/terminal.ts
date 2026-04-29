@@ -97,7 +97,12 @@ export const setupTerminalWebSocketServer = (
 
 		const isLocalServer = serverId === "local";
 
-		if (isLocalServer && !IS_CLOUD) {
+		if (isLocalServer) {
+			if (IS_CLOUD) {
+				ws.send("This feature is not available in the cloud version.");
+				ws.close();
+				return;
+			}
 			const port = Number(url.searchParams.get("port"));
 			const username = url.searchParams.get("username");
 
@@ -145,6 +150,11 @@ export const setupTerminalWebSocketServer = (
 			const server = await findServerById(serverId);
 
 			if (!server) {
+				ws.close();
+				return;
+			}
+
+			if (server.organizationId !== session.activeOrganizationId) {
 				ws.close();
 				return;
 			}
